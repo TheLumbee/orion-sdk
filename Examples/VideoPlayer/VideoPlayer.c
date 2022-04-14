@@ -64,67 +64,71 @@ int main(int argc, char **argv)
         {
             // If we got a new frame/metadata pair, print a little info to the screen
             printf("Captured %5d frames\r", ++FrameCount);
-        }
 
-        // Switch on keyboard input (if any)
-        switch (ProcessKeyboard())
-        {
-        case 's':
-        case 'S':
-        {
-            double Lla[NLLA] = { 0, 0, 0 };
-            int Width, Height, Size;
-            uint64_t TimeStamp;
-            char Path[64];
-
-            // If we can read a KLV UAS data packet out of the decoder
-            if (StreamGetMetaData(MetaData, &Size, sizeof(MetaData)))
+            int keyPress = ProcessKeyboard();
+            if (keyPress)
             {
-                int Result;
+                // Switch on keyboard input (if any)
+                switch (keyPress)
+                {
+                case 's':
+                case 'S':
+                {
+                    double Lla[NLLA] = { 0, 0, 0 };
+                    int Width, Height, Size;
+                    uint64_t TimeStamp;
+                    char Path[64];
 
-                // Send the new metadata to the KLV parser
-                KlvNewData(MetaData, Size);
+                    // If we can read a KLV UAS data packet out of the decoder
+                    if (StreamGetMetaData(MetaData, &Size, sizeof(MetaData)))
+                    {
+                        int Result;
 
-                // Grab the gimbal's LLA out of the KLV data
-                Lla[LAT] = KlvGetValueDouble(KLV_UAS_SENSOR_LAT, &Result);
-                Lla[LON] = KlvGetValueDouble(KLV_UAS_SENSOR_LON, &Result);
-                Lla[ALT] = KlvGetValueDouble(KLV_UAS_SENSOR_MSL, &Result);
+                        // Send the new metadata to the KLV parser
+                        KlvNewData(MetaData, Size);
 
-                // Grab the UNIX timestamp as well
-                TimeStamp = KlvGetValueUInt(KLV_UAS_TIME_STAMP, &Result);
+                        // Grab the gimbal's LLA out of the KLV data
+                        Lla[LAT] = KlvGetValueDouble(KLV_UAS_SENSOR_LAT, &Result);
+                        Lla[LON] = KlvGetValueDouble(KLV_UAS_SENSOR_LON, &Result);
+                        Lla[ALT] = KlvGetValueDouble(KLV_UAS_SENSOR_MSL, &Result);
 
-                // Print the gimbal LLA data to stdout
-                printf("\nImage Pos: %11.6lf %11.6lf %7.1lf", degrees(Lla[LAT]), degrees(Lla[LON]), Lla[ALT]);
+                        // Grab the UNIX timestamp as well
+                        TimeStamp = KlvGetValueUInt(KLV_UAS_TIME_STAMP, &Result);
+
+                        // Print the gimbal LLA data to stdout
+                        printf("\nImage Pos: %11.6lf %11.6lf %7.1lf", degrees(Lla[LAT]), degrees(Lla[LON]), Lla[ALT]);
+                    }
+
+                    // If we can read the current frame out of the decoder
+                    if (StreamGetVideoFrame(VideoFrame, &Width, &Height, sizeof(VideoFrame)))
+                    {
+                        // Create a file path based on the current frame index
+                        sprintf(Path, "%05d.jpg", FrameCount);
+
+                        // Now save the image as a JPEG
+                        SaveJpeg(VideoFrame, Lla, TimeStamp, Width, Height, Path, 75);
+
+                        // Print some confirmation to stdout
+                        printf("\nSaved file %s\n", Path);
+                    }
+
+                    break;
+                }
+
+                case 'q':
+                case 'Q':
+                    KillProcess("Exiting...", 0);
+                    break;
+
+                default:
+                    break;
+                };
             }
 
-            // If we can read the current frame out of the decoder
-            if (StreamGetVideoFrame(VideoFrame, &Width, &Height, sizeof(VideoFrame)))
-            {
-                // Create a file path based on the current frame index
-                sprintf(Path, "%05d.jpg", FrameCount);
-
-                // Now save the image as a JPEG
-                SaveJpeg(VideoFrame, Lla, TimeStamp, Width, Height, Path, 75);
-
-                // Print some confirmation to stdout
-                printf("\nSaved file %s\n", Path);
-            }
-
-            break;
+            // Flush the stdout buffer and sleep for 5ms
+            fflush(stdout);
+            usleep(5000);
         }
-
-        case 'q':
-        case 'Q':
-            KillProcess("Exiting...", 0);
-            break;
-
-        default:
-            break;
-        };
-
-        // Flush the stdout buffer and sleep for 5ms
-        fflush(stdout);
-        usleep(5000);
     }
 
     // Done (actually, we'll never get here...)
@@ -276,7 +280,6 @@ static void ProcessArgs(int argc, char **argv, OrionNetworkVideo_t *pSettings, c
     // If we can't connect to a gimbal, kill the app right now
     if (OrionCommOpen(&argc, &argv) == FALSE)
         KillProcess("", 1);
-
     switch (argc)
     {
     // Recording file path
