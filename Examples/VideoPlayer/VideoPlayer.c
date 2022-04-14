@@ -283,19 +283,19 @@ static void ProcessArgs(int argc, char **argv, OrionNetworkVideo_t *pSettings, c
     switch (argc)
     {
     // Recording file path
-    case 4: strncpy(pRecordPath, argv[3], 256);
+    case 5: strncpy(pRecordPath, argv[4], 256);
     // Video destination port
-    case 3: pSettings->Port = atoi(argv[2]);
+    case 4: pSettings->Port = atoi(argv[3]);
     // Video destination IP
-    case 2:
+    case 3:
     {
         uint8_t Octets[4];
 
-        if (sscanf(argv[1], "%3hhu.%3hhu.%3hhu.%3hhu", &Octets[0], &Octets[1], &Octets[2], &Octets[3]))
+        if (sscanf(argv[2], "%3hhu.%3hhu.%3hhu.%3hhu", &Octets[0], &Octets[1], &Octets[2], &Octets[3]))
         {
             int Index = 0;
             pSettings->DestIp = uint32FromBeBytes(Octets, &Index);
-            sprintf(pVideoUrl, "udp://%s:%d", argv[1], pSettings->Port);
+            sprintf(pVideoUrl, "udp://%s:%d", argv[2], pSettings->Port);
         }
         break;
     }
